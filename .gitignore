@@ -1,0 +1,19 @@
+# Data & artifacts
+data/
+*.npz
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environments
+.venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/

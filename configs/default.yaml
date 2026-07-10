@@ -1,0 +1,26 @@
+# Default configuration for the latent-trajectory MVP (H2).
+# Everything here is inference-only: the model is never trained.
+
+model:
+  # HuggingFace model id for the Huginn recurrent-depth transformer.
+  model_id: "tomg-group-umd/huginn-0125"
+  device: "cuda"
+  dtype: "bf16"
+
+extraction:
+  # Number of recurrent unrolls r of the shared block (path h_0..h_r -> num_steps+1 states).
+  num_steps: 32
+  # Which token position to read the trajectory from (-1 = answer/last token).
+  token_index: -1
+  # Recurrent init is random -> fix seeds for reproducibility. One trajectory per seed.
+  seeds: [0, 1, 2, 3, 4]
+
+dataset:
+  # Depth-graded reasoning dataset (see data/loaders.py).
+  name: "pararule-plus"
+  # Cap for the MVP-scale run (a few hundred examples).
+  max_examples: 200
+
+token_selection:
+  # How to pick the token whose trajectory we analyse.
+  strategy: "answer_token"  # answer_token | last_token | fixed_index
