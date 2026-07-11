@@ -1,80 +1,73 @@
-"""Synthetic 2D paths with known ground-truth labels for testing gate & winding.
+"""Synthetic reasoning-task generators (state-holding probes for H3).
 
 OWNER: Shapes+Gate
-STATUS: stub — implement me.
-TASK: Generate canonical 2D paths whose shape/winding is known analytically,
-    so gate.py and winding.py can be validated WITHOUT the model.
-I/O: shape params -> points_2d [T, 2].
+STATUS: implemented (from notebooks/01_mvp_h2.ipynb, make_* task builders).
+TASK: generate prompts whose "reasoning depth" is a controlled integer, so
+    effective compute can be regressed against it.
+I/O: (n_ops, seed) -> dict with a prompt (and, for variants, matched prompts).
 
-Ground-truth labels:
-    circle    -> "loop",   winding number == `turns`
-    spiral_in -> "settle", winding > 0 but path converges inward
-    spiral_out-> "drift",  winding > 0 but path diverges outward
-    line      -> "drift",  winding number ~ 0
+The counting / switch tasks force the model to HOLD a running state: to answer,
+it cannot just read the last token, it must accumulate. `make_variants` is the
+length-matched control — `track` and `local` share an identical body and differ
+only in the question, isolating state-holding from raw prompt length.
 """
 
 from __future__ import annotations
 
-import numpy as np
+import random
 
 
-def circle(turns: float = 1.0, n: int = 200, radius: float = 1.0, noise: float = 0.0) -> np.ndarray:
-    """Closed circular path. Ground-truth: shape="loop", winding=`turns`.
-
-    Args:
-        turns: Number of full revolutions.
-        n: Number of points.
-        radius: Circle radius.
-        noise: Std of optional Gaussian jitter.
-
-    Returns:
-        Path of shape [n, 2].
-    """
-    raise NotImplementedError(
-        "TODO(Shapes+Gate): theta in [0, 2*pi*turns], (radius*cos, radius*sin) + noise."
-    )
-
-
-def spiral_in(n: int = 200, noise: float = 0.0) -> np.ndarray:
-    """Inward spiral. Ground-truth: shape="settle" (converges to center).
+def make_counting_task(n_ops: int, seed: int = 0) -> dict:
+    """Running +/-1 sum. To answer, the model must hold a counter.
 
     Args:
-        n: Number of points.
-        noise: Std of optional Gaussian jitter.
+        n_ops: Number of +/-1 operations (the reasoning depth).
+        seed: Seed for the random op sequence.
 
     Returns:
-        Path of shape [n, 2].
+        ``{"prompt", "n_ops", "answer"}``.
     """
-    raise NotImplementedError(
-        "TODO(Shapes+Gate): radius decreasing to ~0 while angle advances; add noise."
+    rng = random.Random(seed)
+    ops = [rng.choice([1, -1]) for _ in range(n_ops)]
+    text = (
+        "Start at 0. "
+        + " ".join("Add 1." if o > 0 else "Subtract 1." for o in ops)
+        + " Final total? A:"
     )
+    return {"prompt": text, "n_ops": n_ops, "answer": sum(ops)}
 
 
-def spiral_out(n: int = 200, noise: float = 0.0) -> np.ndarray:
-    """Outward spiral. Ground-truth: shape="drift" (diverges outward).
+def make_variants(n_ops: int, seed: int = 0) -> dict:
+    """Length-matched pair: identical body, different question (the killer control).
 
     Args:
-        n: Number of points.
-        noise: Std of optional Gaussian jitter.
+        n_ops: Number of +/-1 operations (the reasoning depth).
+        seed: Seed for the random op sequence.
 
     Returns:
-        Path of shape [n, 2].
+        ``{"track", "local"}`` — ``track`` needs accumulation, ``local`` needs
+        only the last instruction; both have the same token length.
     """
-    raise NotImplementedError(
-        "TODO(Shapes+Gate): radius increasing from ~0 while angle advances; add noise."
-    )
+    rng = random.Random(seed)
+    ops = [rng.choice([1, -1]) for _ in range(n_ops)]
+    body = "Start at 0. " + " ".join("Add 1." if o > 0 else "Subtract 1." for o in ops)
+    return {
+        "track": body + " Final total? A:",  # needs accumulation
+        "local": body + " What was the last instruction? A:",  # needs only the last step
+    }
 
 
-def line(n: int = 200, noise: float = 0.0) -> np.ndarray:
-    """Straight path. Ground-truth: shape="drift", winding ~ 0.
+def make_switch_task(n_ops: int, seed: int = 0) -> dict:
+    """Light on/off parity. Generalisation test beyond arithmetic counting.
 
     Args:
-        n: Number of points.
-        noise: Std of optional Gaussian jitter.
+        n_ops: Number of flip/wait steps (the reasoning depth).
+        seed: Seed for the random flip sequence.
 
     Returns:
-        Path of shape [n, 2].
+        ``{"prompt", "answer"}`` where answer is "on"/"off" by flip parity.
     """
-    raise NotImplementedError(
-        "TODO(Shapes+Gate): points along a straight segment + noise."
-    )
+    rng = random.Random(seed)
+    flips = [rng.choice([0, 1]) for _ in range(n_ops)]
+    body = "Light is off. " + " ".join("Flip." if f else "Wait." for f in flips)
+    return {"prompt": body + " Is the light on? A:", "answer": "on" if sum(flips) % 2 else "off"}

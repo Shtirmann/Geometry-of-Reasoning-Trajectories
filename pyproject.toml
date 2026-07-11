@@ -9,6 +9,8 @@ dependencies = [
     "scipy",
     "scikit-learn",
     "matplotlib",
+    "pandas",
+    "tqdm",
     "pingouin",
     "pyyaml",
 ]
@@ -18,6 +20,7 @@ model = [
     "torch",
     "transformers==4.53.3",
     "accelerate",
+    "datasets",
 ]
 tda = [
     "giotto-tda",

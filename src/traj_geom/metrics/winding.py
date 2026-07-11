@@ -1,18 +1,20 @@
-"""Winding number of a 2D path — how many turns it makes about a center.
+"""Winding number of a 2D path, and the trajectory-level winding helper.
 
 OWNER: Extraction+Winding
-STATUS: implemented (from notebooks/00_smoke_extract.ipynb, cell-5).
-TASK: Sum the signed, pi-wrapped angle increments of the path about a center
-    (default = centroid) and divide by 2*pi to get the number of turns.
-I/O: points_2d [T, 2] (+ optional center) -> float (signed number of turns).
+STATUS: implemented (from notebooks/01_mvp_h2.ipynb, winding_number / winding_of).
+TASK: signed turns of a 2D path about a center, plus winding_of that PCA-projects
+    a full trajectory to 2D (after a burn-in) and winds it.
+I/O: winding_number(pts [T,2], center?) -> float ; winding_of(traj [T,H], burn) -> float.
 
-NOTE: only meaningful on "loop" shapes (see shapes/gate.py). h_0 is a random
-    init outlier — analyse winding on the path with the first state dropped.
+NOTE: the PCA-projection sign is arbitrary, so experiments compare |winding|.
+    h_0 is a random-init outlier -> drop the first `burn` states before winding.
 """
 
 from __future__ import annotations
 
 import numpy as np
+
+from traj_geom.metrics.projection import pca_to_2d
 
 
 def winding_number(points_2d: np.ndarray, center: np.ndarray | None = None) -> float:
@@ -26,9 +28,22 @@ def winding_number(points_2d: np.ndarray, center: np.ndarray | None = None) -> f
         Signed number of full turns (e.g. ~+1.0 for one counter-clockwise loop).
     """
     pts = np.asarray(points_2d, dtype=float)
-    c = pts.mean(axis=0) if center is None else np.asarray(center, dtype=float)
+    c = pts.mean(0) if center is None else np.asarray(center, dtype=float)
     v = pts - c
     ang = np.arctan2(v[:, 1], v[:, 0])
     d = np.diff(ang)
     d = (d + np.pi) % (2 * np.pi) - np.pi  # wrap into (-pi, pi]
     return float(d.sum() / (2 * np.pi))
+
+
+def winding_of(traj: np.ndarray, burn: int = 4) -> float:
+    """PCA-project a trajectory to 2D (after a burn-in) and return its winding.
+
+    Args:
+        traj: Trajectory of shape [T, hidden_dim].
+        burn: Number of initial states to drop (h_0 init arc is an outlier).
+
+    Returns:
+        The winding number of the burned-in, PCA-projected path.
+    """
+    return winding_number(pca_to_2d(traj[burn:]))
