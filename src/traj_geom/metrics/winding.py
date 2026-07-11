@@ -1,14 +1,13 @@
 """Winding number of a 2D path — how many turns it makes about a center.
 
 OWNER: Extraction+Winding
-STATUS: stub — implement me.
+STATUS: implemented (from notebooks/00_smoke_extract.ipynb, cell-5).
 TASK: Sum the signed, pi-wrapped angle increments of the path about a center
-    (default = centroid of the points) and divide by 2*pi to get turns.
+    (default = centroid) and divide by 2*pi to get the number of turns.
 I/O: points_2d [T, 2] (+ optional center) -> float (signed number of turns).
 
-NOTE: wrap each angle delta into (-pi, pi] before summing so a full loop
-    contributes +/-1.0; sign encodes direction. Only meaningful on "loop"
-    shapes (see shapes/gate.py).
+NOTE: only meaningful on "loop" shapes (see shapes/gate.py). h_0 is a random
+    init outlier — analyse winding on the path with the first state dropped.
 """
 
 from __future__ import annotations
@@ -26,7 +25,10 @@ def winding_number(points_2d: np.ndarray, center: np.ndarray | None = None) -> f
     Returns:
         Signed number of full turns (e.g. ~+1.0 for one counter-clockwise loop).
     """
-    raise NotImplementedError(
-        "TODO(Extraction+Winding): center points (default centroid), take angles "
-        "atan2(dy, dx), sum pi-wrapped consecutive diffs, divide by 2*pi."
-    )
+    pts = np.asarray(points_2d, dtype=float)
+    c = pts.mean(axis=0) if center is None else np.asarray(center, dtype=float)
+    v = pts - c
+    ang = np.arctan2(v[:, 1], v[:, 0])
+    d = np.diff(ang)
+    d = (d + np.pi) % (2 * np.pi) - np.pi  # wrap into (-pi, pi]
+    return float(d.sum() / (2 * np.pi))

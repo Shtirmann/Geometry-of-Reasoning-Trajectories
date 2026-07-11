@@ -1,34 +1,47 @@
 """Load the Huginn recurrent-depth transformer for inference.
 
 OWNER: Extraction+Winding
-STATUS: stub — implement me.
-TASK: Load Huginn (custom architecture, trust_remote_code=True) onto the
-    target device/dtype and return a ready-to-run model handle.
-I/O: model_id (+ device, dtype) -> loaded model object.
+STATUS: implemented (from notebooks/00_smoke_extract.ipynb, cell-2).
+TASK: Load Huginn (custom architecture, trust_remote_code=True) at the pinned
+    revision onto the target device/dtype and return (model, tokenizer).
+I/O: (device, dtype) -> (model, tok).
 
-NOTE: Huginn is a custom architecture — you MUST pass trust_remote_code=True.
-    Its per-unroll hidden states are NOT exposed via output_hidden_states; the
-    recurrent loop must be hooked directly (see hook.py). Loading here only
-    prepares the model; capturing h_t happens in extraction/hook.py.
+GOTCHA: transformers must be 4.50–4.53 and the revision must be pinned — see
+    traj_geom.constants. Per-unroll hidden states are NOT exposed via
+    output_hidden_states; capture them by hooking core_block (see hook.py).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-def load_huginn(model_id: str, device: str = "cuda", dtype: str = "bf16") -> Any:
-    """Load the Huginn model for inference.
+from traj_geom.constants import MODEL_ID, MODEL_REVISION
+
+
+def load_huginn(
+    device: str = "cuda", dtype: torch.dtype = torch.bfloat16
+) -> tuple[Any, Any]:
+    """Load the Huginn model and tokenizer at the pinned revision.
 
     Args:
-        model_id: HuggingFace id of the Huginn checkpoint.
         device: Torch device string, e.g. ``"cuda"`` or ``"cpu"``.
-        dtype: Compute dtype tag, e.g. ``"bf16"``.
+        dtype: Compute dtype (default ``torch.bfloat16``).
 
     Returns:
-        The loaded model object (ready for hooked inference).
+        ``(model, tokenizer)`` — model moved to ``device`` and set to eval mode.
     """
-    raise NotImplementedError(
-        "TODO(Extraction+Winding): load Huginn with trust_remote_code=True, "
-        "move to device/dtype, set eval mode."
+    model = (
+        AutoModelForCausalLM.from_pretrained(
+            MODEL_ID,
+            revision=MODEL_REVISION,
+            torch_dtype=dtype,
+            trust_remote_code=True,
+        )
+        .to(device)
+        .eval()
     )
+    tok = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
+    return model, tok

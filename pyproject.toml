@@ -16,7 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 model = [
     "torch",
-    "transformers",
+    "transformers==4.53.3",
     "accelerate",
 ]
 tda = [
@@ -40,6 +40,8 @@ packages = ["src/traj_geom"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests", "scripts"]
+# Notebooks are proven exploratory scratch (semicolons, throwaway vars) — don't lint.
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "N", "W"]

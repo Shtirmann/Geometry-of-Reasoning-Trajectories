@@ -6,10 +6,19 @@ implements winding.py. The body is real: unskip once both are done.
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from traj_geom.metrics.winding import winding_number
 from traj_geom.shapes import synthetic
+
+
+def test_winding_number_on_circle_is_one() -> None:
+    """winding_number is implemented: one full circle winds ~1, reversed ~-1."""
+    t = np.linspace(0.0, 2.0 * np.pi, 400, endpoint=False)
+    circle = np.stack([np.cos(t), np.sin(t)], axis=1)
+    assert winding_number(circle) == pytest.approx(1.0, abs=0.02)
+    assert winding_number(circle[::-1]) == pytest.approx(-1.0, abs=0.02)
 
 
 @pytest.mark.skip(reason="stub — implement synthetic.circle and winding_number first")

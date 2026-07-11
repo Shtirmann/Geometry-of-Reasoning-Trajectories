@@ -4,6 +4,8 @@
 model:
   # HuggingFace model id for the Huginn recurrent-depth transformer.
   model_id: "tomg-group-umd/huginn-0125"
+  # Pin the remote model code (trust_remote_code) — verified working revision.
+  revision: "bb6621b65e90b6a4b9b29ef88dc83866d450470c"
   device: "cuda"
   dtype: "bf16"
 
