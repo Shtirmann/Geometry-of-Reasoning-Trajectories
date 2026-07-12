@@ -1,0 +1,16 @@
+file,kind,n_ops,num_steps,init_seed,n_h1,max_h1_persist_norm
+track_n48_ns64_init0.npy,track,48,64,0,10,0.001
+track_n48_ns64_init1.npy,track,48,64,1,9,0.001
+track_n48_ns64_init2.npy,track,48,64,2,15,0.001
+local_n48_ns64_init0.npy,local,48,64,0,17,0.005
+local_n48_ns64_init1.npy,local,48,64,1,17,0.004
+local_n48_ns64_init2.npy,local,48,64,2,26,0.009
+track_n4_ns64_init0.npy,track,4,64,0,18,0.001
+track_n4_ns64_init1.npy,track,4,64,1,7,0.001
+track_n4_ns64_init2.npy,track,4,64,2,11,0.001
+track_n48_ns16_init0.npy,track,48,16,0,0,0.0
+track_n48_ns16_init1.npy,track,48,16,1,0,0.0
+track_n48_ns16_init2.npy,track,48,16,2,0,0.0
+track_n24_ns16_init0.npy,track,24,16,0,0,0.0
+track_n24_ns16_init1.npy,track,24,16,1,0,0.0
+track_n24_ns16_init2.npy,track,24,16,2,0,0.0

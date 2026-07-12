@@ -23,9 +23,9 @@ model = [
     "datasets",
 ]
 tda = [
-    "giotto-tda",
     "ripser",
     "persim",
+    "scipy",
 ]
 dev = [
     "pytest",

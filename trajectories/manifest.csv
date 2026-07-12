@@ -1,0 +1,16 @@
+file,kind,n_ops,num_steps,init_seed
+track_n48_ns64_init0.npy,track,48,64,0
+track_n48_ns64_init1.npy,track,48,64,1
+track_n48_ns64_init2.npy,track,48,64,2
+local_n48_ns64_init0.npy,local,48,64,0
+local_n48_ns64_init1.npy,local,48,64,1
+local_n48_ns64_init2.npy,local,48,64,2
+track_n4_ns64_init0.npy,track,4,64,0
+track_n4_ns64_init1.npy,track,4,64,1
+track_n4_ns64_init2.npy,track,4,64,2
+track_n48_ns16_init0.npy,track,48,16,0
+track_n48_ns16_init1.npy,track,48,16,1
+track_n48_ns16_init2.npy,track,48,16,2
+track_n24_ns16_init0.npy,track,24,16,0
+track_n24_ns16_init1.npy,track,24,16,1
+track_n24_ns16_init2.npy,track,24,16,2
