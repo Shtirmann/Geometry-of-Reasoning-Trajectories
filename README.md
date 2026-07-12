@@ -6,15 +6,13 @@ Inference-only анализ латентных траекторий рекурр
 Рабочая заготовка (MVP). Реализованы: winding, steps-to-settle, classify_shape (settle/loop/drift), персистентная гомология H1 (ripser), объективные метрики сходимости, корректность через `generate`. Не реализованы: спектральный радиус ρ(∂ₕR)/показатель Ляпунова, Q–K проба, полный accuracy-vs-depth. Большинство прогонов — один сид инициализации и только токен ответа (см. Ограничения).
 
 ## Гипотезы
-Дословно из proposal (S. Barannikov, «Geometry of Reasoning Trajectories in Recurrent-Depth Transformers», SMILES 2026):
-
 > **H1 (A few shapes).** Each token's latent path falls into one of a few regimes—settling to a point, looping, or drifting—that can be told apart by simple measurements: how quickly steps shrink (the Lyapunov exponent λ), whether the path returns on itself, and its persistent-homology signature.
 >
 > **H2 (Loops track reasoning depth).** When the path loops, its number of turns—the winding number—grows with the number of reasoning steps the problem requires.
 >
 > **H3 (Why looping can be necessary).** If the update is forced to always settle (strict contraction, ρ(∂ₕR)<1), the model cannot hold a running count or memory, so tasks needing persistent state must loop or drift.
 
-Протокол (там же): «Inference-only on the open Huginn-3.5B model, no fine-tuning. Metrics: Lyapunov exponent and spectral radius ρ(∂ₕR); persistent homology H₁ and winding number; the depth-vs-winding fit; accuracy versus recurrence depth.»
+Протокол: Inference-only on the open Huginn-3.5B model, no fine-tuning. Metrics: Lyapunov exponent and spectral radius ρ(∂ₕR); persistent homology H₁ and winding number; the depth-vs-winding fit; accuracy versus recurrence depth.
 
 ## Эксперименты
 - E1 — PARARULE-Plus (глубины 2–5): форма и winding траектории токена ответа vs глубина.
