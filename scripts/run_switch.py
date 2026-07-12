@@ -13,7 +13,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts._common import cached, load_model
-from traj_geom.analysis.correlate import spearman
+from traj_geom.analysis.correlate import fmt_by_level, spearman
 from traj_geom.metrics.dynamics import steps_to_settle
 from traj_geom.metrics.winding import winding_of
 from traj_geom.shapes.synthetic import make_switch_task
@@ -45,8 +45,12 @@ def compute() -> pd.DataFrame:
 def main() -> None:
     """Report winding/steps vs parity length."""
     sw = cached("switch.csv", compute)
-    print("switch | winding~n_ops:", spearman(sw["n_ops"], sw["winding"]))
-    print("switch | steps~n_ops:", spearman(sw["n_ops"], sw["steps_settle"]))
+    # Canonical: per-level Spearman + N.
+    print("switch | steps~n_ops   [per-level]:", fmt_by_level(sw, "n_ops", "steps_settle"))
+    print("switch | winding~n_ops [per-level]:", fmt_by_level(sw, "n_ops", "winding"))
+    # Secondary (per-row):
+    print("switch | steps~n_ops   [per-row]:", spearman(sw["n_ops"], sw["steps_settle"]))
+    print("switch | winding~n_ops [per-row]:", spearman(sw["n_ops"], sw["winding"]))
 
 
 if __name__ == "__main__":

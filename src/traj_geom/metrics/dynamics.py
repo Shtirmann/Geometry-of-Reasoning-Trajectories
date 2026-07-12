@@ -40,3 +40,17 @@ def steps_to_settle(traj: np.ndarray, frac: float = 0.1) -> int:
     s = step_norms(traj)
     below = np.where(s < frac * s.max())[0]
     return int(below[0]) if len(below) else len(s)
+
+
+def contraction_rate(traj: np.ndarray) -> float:
+    """Mean log-change of step size along the path. <0 = the path is contracting.
+
+    Args:
+        traj: Trajectory of shape [T, hidden_dim].
+
+    Returns:
+        Mean of ``diff(log(step_norms))``, or NaN if fewer than 3 steps survive the floor.
+    """
+    s = step_norms(traj)
+    s = s[s > 1e-9]
+    return float(np.mean(np.diff(np.log(s)))) if len(s) >= 3 else np.nan

@@ -13,7 +13,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts._common import cached, load_model
-from traj_geom.analysis.correlate import partial_spearman, spearman
+from traj_geom.analysis.correlate import fmt_by_level, partial_spearman, spearman
 from traj_geom.data.loaders import enrich, load_pararule
 from traj_geom.metrics.dynamics import steps_to_settle
 from traj_geom.metrics.winding import winding_of
@@ -44,8 +44,15 @@ def main() -> None:
     df = cached("pararule.csv", compute)
     print(df.groupby("depth")[["seq_len", "winding", "steps_settle"]].mean().round(3))
     print(df.groupby("depth")["shape"].value_counts())
-    print("winding~depth:", spearman(df["winding"], df["depth"]))
-    print("partial winding~depth | L:", partial_spearman(df["winding"], df["depth"], df["seq_len"]))
+    # Canonical: per-level Spearman (rho on depth group-means) + N.
+    print("winding~depth [per-level]:", fmt_by_level(df, "depth", "winding"))
+    print("steps~depth   [per-level]:", fmt_by_level(df, "depth", "steps_settle"))
+    # Secondary (per-row):
+    print("winding~depth [per-row]:", spearman(df["winding"], df["depth"]))
+    print(
+        "winding~depth [per-row, partial|L]:",
+        partial_spearman(df["winding"], df["depth"], df["seq_len"]),
+    )
 
 
 if __name__ == "__main__":

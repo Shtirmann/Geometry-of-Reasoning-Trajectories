@@ -1,203 +1,93 @@
-# Geometry of Reasoning Trajectories
+# Geometry of Reasoning Trajectories in Recurrent-Depth Transformers
 
-Геометрия латентных траекторий рассуждения в рекуррентно-глубинном трансформере
-**Huginn-3.5B**. Проект **inference-only**: модель не обучается — мы прогоняем её,
-снимаем траекторию скрытого состояния и меряем её форму и динамику против глубины
-рассуждения. Это репозиторий с **результатами MVP** (данные в `results/`, фигуры в
-`figures/`); весь рабочий код перенесён из `notebooks/01_mvp_h2.ipynb`.
+Inference-only анализ латентных траекторий рекуррентного блока Huginn-3.5B (Geiping et al., arXiv:2502.05171). Модель не обучается: прогоняем, снимаем скрытое состояние на каждом анролле (хук на `core_block[-1]`), считаем геометрические/динамические/топологические величины. MVP проверяет гипотезы H1–H3 из proposal.
 
----
+## Статус
+Рабочая заготовка (MVP). Реализованы: winding, steps-to-settle, classify_shape (settle/loop/drift), персистентная гомология H1 (ripser), объективные метрики сходимости, корректность через `generate`. Не реализованы: спектральный радиус ρ(∂ₕR)/показатель Ляпунова, Q–K проба, полный accuracy-vs-depth. Большинство прогонов — один сид инициализации и только токен ответа (см. Ограничения).
 
-## 1. Проблема и Huginn
+## Гипотезы
+Дословно из proposal (S. Barannikov, «Geometry of Reasoning Trajectories in Recurrent-Depth Transformers», SMILES 2026):
 
-Обычные reasoning-модели рассуждают *словами* (chain-of-thought). Huginn рассуждает
-**в латентном пространстве**: у него единый рекуррентный блок (`core_block`), который
-прогоняется по одному и тому же скрытому состоянию `r` раз (adaptive compute), прежде
-чем выдать токен. Один прогон даёт **траекторию** `h_1 … h_r` (h₀ — случайный старт)
-в пространстве размерности 5280.
+> **H1 (A few shapes).** Each token's latent path falls into one of a few regimes—settling to a point, looping, or drifting—that can be told apart by simple measurements: how quickly steps shrink (the Lyapunov exponent λ), whether the path returns on itself, and its persistent-homology signature.
+>
+> **H2 (Loops track reasoning depth).** When the path loops, its number of turns—the winding number—grows with the number of reasoning steps the problem requires.
+>
+> **H3 (Why looping can be necessary).** If the update is forced to always settle (strict contraction, ρ(∂ₕR)<1), the model cannot hold a running count or memory, so tasks needing persistent state must loop or drift.
 
-Мы снимаем эту траекторию, хукая `core_block[-1]`, и меряем **форму** (сходится /
-петляет / дрейфует) и **динамику** (как быстро путь замирает). Вопрос: связаны ли они
-с тем, насколько глубоко модель рассуждает над задачей?
+Протокол (там же): «Inference-only on the open Huginn-3.5B model, no fine-tuning. Metrics: Lyapunov exponent and spectral radius ρ(∂ₕR); persistent homology H₁ and winding number; the depth-vs-winding fit; accuracy versus recurrence depth.»
 
-## 2. Гипотезы
+## Эксперименты
+- E1 — PARARULE-Plus (глубины 2–5): форма и winding траектории токена ответа vs глубина.
+- E2 — синтетический счёт ±1: winding/steps vs длина счёта.
+- E3 — length-matched контроль (track/local одной длины): single-seed и multi-seed (5 стартов × 10 длин).
+- E4 — phase / force-loop: форма при урезанном бюджете шагов (16/24/32/64).
+- E5 — обобщение: чётность (switch), бегущий максимум (maxtask).
+- Гомология H1 (ripser) на 15 забанканных траекториях.
+- Корректность: точность ответа через `generate`.
+- Объективные метрики сходимости (по Pappone et al., arXiv:2509.23314) на траекториях.
 
-- **H1 — форм мало.** Траектории укладываются в 3 типа: `settle` / `loop` / `drift`.
-- **H2 — число оборотов петли растёт с глубиной рассуждения `d`.** (winding ∝ depth)
-- **H3 — сжатие ⇒ нельзя держать счётчик ⇒ счётные задачи сопротивляются сходимости.**
+## Результаты
+Все корреляции длины/глубины — Spearman rho по групповым средним (per-level), N = число уровней; per-row (по отдельным траекториям) завышает значимость из-за псевдорепликации.
 
-> **Фокус MVP — H2 и H3.** Итог (спойлер): H2 в наивной форме **опровергнута**, H3
-> **подтверждена**, а реальным носителем сигнала оказался не winding, а
-> **steps-to-settle** (эффективный компьют).
+- PARARULE: все 40 траекторий → settle. Тренда с глубиной нет: winding~depth rho=+0.20, steps~depth rho=+0.80 (per-level, N=4 глубины; оба n.s. — при N=4 порог значимости ≈1.0, магнитуда не интерпретируема, см. flat scatter). Для полноты per-row (N=40): −0.04 / +0.12.
+- Счёт: всё settle; корреляция winding с длиной съедается длиной промпта.
+- Length-matched, multi-seed (10 длин × 5 инициализаций, per-level): track steps~длина rho=+0.84 (N=10, p<.05), но эффект ~1 шаг и разваливается по инициализациям — per-seed rho=[0.87, 0.79, 0.79, 0.17, 0.45] (диапазон 0.17–0.87); local rho=−0.21 (n.s.), знак пляшет по сидам [−0.41 … +0.28]; winding n.s.
+- Обобщение (per-level, N=6): switch steps~длина rho=+0.78, maxtask rho=−0.77 — обе не проходят порог значимости (0.886 при N=6): устойчивого эффекта длины нет ни там, ни там.
+- Корректность: accuracy счёта 38% (len 2), 0% (len ≥ 8).
+- Гомология: макс. норм-персистентность H1 ≈ 0.003 (ns=64) / 0.000 (ns=16). На 15 траекториях и на одномерных кривых H1≈0 ожидаем by construction.
+- Объективная сходимость: размер шага к концу ужимается ×52; conv_rate<0 у 9/9; drift-to-loop ratio ≈12; косинус соседних шагов ≈−0.28.
 
-## 3. Что меряем (4 метрики)
+## Выводы (с привязкой к источникам)
+- На токене ответа траектории экспоненциально сходятся к фикс-точке. Это заложено в дизайн Huginn: Geiping et al. (2502.05171) инициализируют латент случайно, что «promotes convergence to a steady state independent of initialization, i.e. path independence». Независимое измерение на той же модели — Blayney et al. (2604.11791, App. C): «the vast majority of tokens reach a fixed-point».
+- Синтетический счёт модель не решает (0% при len ≥ 8; проверено одним форматом промпта). Согласуется с теорией невозможности: Merrill et al. (2404.08819) — SSM «cannot solve simple state-tracking problems like permutation composition», и «the ‘state’ in an SSM is an illusion»; Grazzi et al. (2411.12537) — «finite precision LRNNs with state-transition matrices having only positive eigenvalues cannot solve parity».
+- Роста winding с глубиной/длиной не обнаружено. Оговорка: смотрели только токен ответа, малые выборки, один сид — это непокрытие H2 (она условная: «when the path loops»), а не её опровержение.
+- Формулировка «петель нет» некорректна по мощности: Blayney et al. (2604.11791, App. C) на Huginn-0125 — «only approximately 0.02% of tokens exhibit non-fixed-point behavior» (до 2.81% на токенах вопроса с их system-prompt). При ставке 0.02% 15 траекторий дают ожидаемо ≈0 даже если петли есть. Корректно: «ниже порога обнаружения».
 
-| Метрика | Смысл | Статус в MVP |
-|---|---|---|
-| Показатель Ляпунова | расхождение близких траекторий | на будущее |
-| Спектральный радиус якобиана | локальное сжатие шага | на будущее |
-| Персистентная гомология H1 | топологическая «дырка» = петля | реализовано (`scripts/run_homology.py` → `results/homology.csv`) |
-| **Число оборотов (winding)** | сколько витков наматывает 2D-проекция | **реализовано** |
+## Ограничения
+- Только токен ответа (index −1); у Geiping et al. орбиты наблюдаются на токенах вопроса/цифр, не на токене ответа.
+- Малые выборки; нет мощности на явление частотой 0.02–2.8% (Blayney).
+- Метрики: winding по 2D-PCA (знак произволен); steps-to-settle не отличает «малый шаг» от «сошёлся»; H1 одной кривой ≈0 by construction.
+- Один сид инициализации в большинстве прогонов; множественные сравнения без поправки.
+- Не воспроизведён режим Geiping (его system-prompt, глобальный PCA 6D, r=128).
+- ρ(∂ₕR)/Ляпунов, персистентная гомология на масштабе, Q–K проба — не сделаны.
+- Метрики сходимости взяты у Pappone et al. (2509.23314), но их работа — на собственной GPT-2-масштаба модели, не на Huginn; перенос требует проверки.
 
-Плюс два рабочих измерения, вокруг которых собрался результат:
-**steps-to-settle** (сколько шагов до затухания нормы `‖Δh‖` — прокси эффективного
-компьюта) и **loop-gate** (`classify_shape`: settle/loop/drift).
+## Дальнейшая работа
+- Все позиции токенов; system-prompt и режим Geiping et al. (2502.05171); r=128.
+- Спектральный радиус ρ(J) через power-iteration + JVP (метод Yang et al., 2605.26733); дистанция до фикс-точки.
+- Мощностный скан частоты форм против ставок Blayney et al. (2604.11791).
+- Корректная TDA-конструкция (популяционное облако / delay-embedding).
+- Q–K проба по Tulchinskii et al. (2502.17017) на PARARULE-Plus.
 
-## 4. Related work
+## Воспроизведение
+```
+uv sync ; uv run pytest ; uv run ruff check .
+uv sync --extra tda ; uv run python scripts/run_homology.py     # ripser
+uv sync --extra model                                            # torch, transformers==4.53.3
+```
+Пины (в `src/traj_geom/constants.py`): `transformers==4.53.3` (рабочее окно 4.50–4.53), `revision="bb6621b65e90b6a4b9b29ef88dc83866d450470c"`. Замечания: `num_steps` — int; хук на `core_block[-1]` с `_forward_hooks.clear()` + try/finally; для траектории `forward`, не `generate`.
 
-- **Geiping et al., 2025** (arXiv:2502.05171) — Huginn, рекуррентно-глубинная
-  архитектура с adaptive compute. Наш объект исследования.
-- **Lu et al., 2025** (arXiv:2507.02199) — Logit / Coda Lens: чтение латентных
-  состояний рекуррентной модели. Родственный метод probing.
-- **Pappone et al., NeurIPS 2025** (arXiv:2509.23314) — Two-Scale Latent Dynamics;
-  baseline «second-difference early exit» перекликается с нашим steps-to-settle как
-  мерой того, когда траектория фактически замерла.
-
----
-
-## 5. Пять экспериментов (с числами)
-
-Все числа воспроизводятся из `results/*.csv` (см. §7). Winding берём по модулю
-(`|winding|`) — знак PCA-проекции произволен.
-
-### E1 · PARARULE-Plus — H2 как null (`results/pararule.csv`)
-
-Датасет символической логики с встроенной глубиной `d` (2–5), по 10 примеров.
-**Все 40 траекторий → settle.** Корреляции winding с глубиной нет:
-
-- `winding ~ depth`: ρ = **−0.037**, p = **0.82**;
-- частная `winding ~ depth | L` (контроль длины): ρ = −0.234, p = 0.15;
-- `steps-to-settle`: 20.2 → 22.0 при росте `d` (очень слабый рост).
-
-**Вывод:** многошаговая символическая логика НЕ заставляет траекторию петлять;
-winding по глубине — нулевой. **Наивная H2 опровергнута.**
-
-### E2 · Синтетика счёта — H3 (`results/counting.csv`)
-
-Бегущая ±1 сумма, длина счёта `n_ops ∈ {2…32}`, 5 сидов. Всё settle, но:
-
-- `steps-to-settle ~ n_ops`: ρ = **0.718**, p < 1e-5 — эффективный компьют **растёт**
-  с длиной удерживаемого состояния;
-- `|winding| ~ n_ops`: ρ = 0.554, p = 0.002, **но** частная по длине `L` даёт
-  ρ = 0.04, p = 0.82 — winding-корреляция съедается длиной промпта.
-
-Значит нужен контроль, который разводит «удержание состояния» и «длину».
-
-### E3 · Length-matched контроль — killer-эксперимент (`results/dissociation_15seed.csv`)
-
-`track` и `local` имеют **идентичное тело** и различаются только вопросом («какова
-сумма?» против «какая была последняя инструкция?») ⇒ одинаковая длина. 15 сидов:
-
-| вариант | `steps ~ n_ops` | `winding ~ n_ops` |
-|---|---|---|
-| **track** (нужна аккумуляция) | ρ = **+0.558**, p < 1e-8 | ρ = +0.324, p = 0.002 |
-| **local** (только последний шаг) | ρ = **−0.576**, p < 1e-8 | ρ = +0.054, p = 0.61 (null) |
-
-При **той же длине** знак определяется только задачей: удержание состояния → компьют
-растёт; чистое считывание → падает. **Эффект гонит удержание состояния, а не длина
-промпта.** Это ядро результата (H3).
-
-![Length-matched контроль](figures/dissociation.png)
-
-### E4 · Фазовая карта + force-loop (`results/phase.csv`, `results/forceloop.csv`)
-
-Урезаем бюджет `num_steps`. **Force-loop:** при `num_steps=16` появляются петли
-(`n_ops=24`: 7/8 loop; `n_ops=48`: 5/8 loop), при `num_steps ≥ 24` — снова всё settle.
-**Фазовая карта** (`num_steps` × `n_ops`): доля «не замерло» (loop/drift) растёт при
-малом бюджете и длинном счёте.
-
-**Вывод:** петли — симптом **нехватки компьюта**, а не глубины самой по себе.
-
-![Фазовая карта](figures/phase.png)
-
-### E5 · Switch — обобщение за пределы арифметики (`results/switch.csv`)
-
-Задача чётности «свет вкл/выкл», `n_ops ∈ {4…48}`, 10 сидов:
-
-- `winding ~ n_ops`: ρ = 0.162, p = 0.22 (null);
-- `steps-to-settle ~ n_ops`: ρ = **0.615**, p < 1e-6.
-
-Та же подпись, что у счёта: удержание состояния → рост эффективного компьюта.
-**Эффект не специфичен для сложения** — обобщается на другую счётную задачу.
-
-### Итог
-
-На полном бюджете (`num_steps=64`) почти всё **сходится**, и winding как индикатор
-«глубины» — слабый/нулевой (H1: доминирует `settle`; H2 опровергнута). Реальный
-носитель сигнала — **steps-to-settle**: он монотонно растёт с длиной удерживаемого
-состояния и **выживает length-matched контроль** (H3 подтверждена и обобщается).
-
----
-
-## 6. Контракт формата
-
-Хук возвращает траекторию как `np.ndarray [num_steps, 5280]`. Все метрики (winding,
-step-norms, gate) написаны против этого массива — синтетику и реальные `h_t` можно
-подставлять взаимозаменяемо. Dataclass `Trajectory` (в `src/traj_geom/types.py`)
-остаётся для сохранения/загрузки с метаданными (`depth`, `seq_len`, `seed`, …).
-
-## 7. Установка и воспроизведение
-
-Данные и фигуры **уже лежат** в `results/` и `figures/` (распакованы из Kaggle).
-Анализ воспроизводится из кеша **без GPU** — тяжёлый расчёт запускается, только если
-CSV отсутствует.
-
-```bash
-uv sync                                   # базовое окружение (анализ на готовых CSV)
-uv run pytest                             # тесты (winding/gate на синтетике зелёные)
-uv run ruff check .                       # линт
-
-# Перепечатать статистику/фигуры из results/ (GPU не нужен):
-uv run python -m scripts.run_pararule
-uv run python -m scripts.run_counting
-uv run python -m scripts.run_dissociation --seeds 15   # + перерисовка figures/dissociation.png
-uv run python -m scripts.run_phase                     # + перерисовка figures/phase.png
-uv run python -m scripts.run_forceloop
-uv run python -m scripts.run_switch
-
-# Полный прогон с моделью (Kaggle P100 / любой GPU):
-uv sync --extra model                     # torch, transformers==4.53.3, datasets, accelerate
-# затем удалить нужный results/<name>.csv и запустить соответствующий скрипт заново
+## Структура
+```
+src/traj_geom/   extraction/ metrics/ shapes/ data/ analysis/ + constants.py, types.py
+scripts/         воспроизводимые эксперименты (python -m scripts.<name>)
+results/         CSV со всеми прогонами
+trajectories/    забанканные .npy + manifest.csv
+figures/         фигуры экспериментов
+notebooks/       00_smoke_extract.ipynb, 01_mvp_h2.ipynb
 ```
 
-**Env-пины (гарантия «как есть»),** см. `src/traj_geom/constants.py`:
-`transformers==4.53.3` (окно **только 4.50–4.53**) и
-`revision="bb6621b65e90b6a4b9b29ef88dc83866d450470c"` на обоих `from_pretrained`.
-Грабли: `num_steps` — int (не тензор); хук на `core_block[-1]` с
-`_forward_hooks.clear()` + try/finally; h₀ — случайный старт (burn-in при winding);
-для траектории `forward`, НЕ `generate`.
-
-## 8. Структура и роли
-
-```text
-src/traj_geom/
-  constants.py          # пины + грабли
-  types.py              # контракт Trajectory (save/load)
-  extraction/           # OWNER: Extraction+Winding
-    model.py            #   load_huginn -> (model, tok)
-    hook.py             #   extract_trajectory -> np.ndarray [steps, 5280]
-  metrics/              # OWNER: Extraction+Winding
-    projection.py       #   pca_to_2d
-    winding.py          #   winding_number, winding_of
-    dynamics.py         #   step_norms, steps_to_settle
-  shapes/               # OWNER: Shapes+Gate
-    gate.py             #   classify_shape -> settle|loop|drift
-    synthetic.py        #   make_counting_task, make_variants, make_switch_task
-  data/loaders.py       # OWNER: Data+Analysis — load_pararule, enrich
-  analysis/correlate.py # OWNER: Data+Analysis — spearman, partial_spearman
-scripts/                # воспроизводимые эксперименты (python -m scripts.<name>)
-results/  figures/      # готовые данные и фигуры (из Kaggle) — не пересчитывать
-notebooks/01_mvp_h2.ipynb   # единственный источник рабочего кода
-```
-
-| Роль | Что сделано |
-|---|---|
-| **Extraction+Winding** | хук `core_block`, winding, PCA, step-dynamics |
-| **Shapes+Gate** | loop-gate, синтетика счёта/switch, force-loop |
-| **Data+Analysis** | загрузчик PARARULE, корреляции, фигуры |
-
-## 9. Ссылки
-
-- Geiping et al. — Huginn. arXiv:**2502.05171**
-- Lu et al. — Logit/Coda Lens probing. arXiv:**2507.02199**
-- Pappone et al. — Two-Scale Latent Dynamics (NeurIPS 2025). arXiv:**2509.23314**
+## Ссылки
+- Geiping et al. Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach. NeurIPS 2025. arXiv:2502.05171.
+- Blayney et al. A Mechanistic Analysis of Looped Reasoning Language Models. arXiv:2604.11791.
+- Lu et al. Latent Chain-of-Thought? Decoding the Depth-Recurrent Transformer. arXiv:2507.02199.
+- Pappone et al. Two-Scale Latent Dynamics for Recurrent-Depth Transformers. NeurIPS 2025. arXiv:2509.23314.
+- Merrill, Petty, Sabharwal. The Illusion of State in State-Space Models. arXiv:2404.08819.
+- Grazzi et al. Unlocking State-Tracking in Linear RNNs Through Negative Eigenvalues. arXiv:2411.12537.
+- Sarrof, Veitsman, Hahn. The Expressive Capacity of State Space Models: A Formal Language Perspective. NeurIPS 2024. arXiv:2405.17394.
+- Movahedi et al. Fixed-Point Reasoners: Stable and Adaptive Deep Looped Transformers. arXiv:2606.18206.
+- Yang et al. Stabilizing Recurrent Dynamics for Test-Time Scalable Latent Reasoning in Looped Language Models. arXiv:2605.26733.
+- Geshkovski et al. A Mathematical Perspective on Transformers. arXiv:2312.10794.
+- Tulchinskii et al. Quantifying Logical Consistency in Transformers via Query–Key Alignment. EMNLP 2025. arXiv:2502.17017.
+- Bai, Kolter, Koltun. Deep Equilibrium Models. NeurIPS 2019. arXiv:1909.01377.
+- Barannikov. The framed Morse complex and its invariants. Advances in Soviet Mathematics 21 (1994) 93–115.

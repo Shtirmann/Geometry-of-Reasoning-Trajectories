@@ -71,3 +71,21 @@ def make_switch_task(n_ops: int, seed: int = 0) -> dict:
     flips = [rng.choice([0, 1]) for _ in range(n_ops)]
     body = "Light is off. " + " ".join("Flip." if f else "Wait." for f in flips)
     return {"prompt": body + " Is the light on? A:", "answer": "on" if sum(flips) % 2 else "off"}
+
+
+def make_max_task(n_ops: int, seed: int = 0) -> dict:
+    """Running maximum. To answer, the model must hold the largest number so far.
+
+    Args:
+        n_ops: Number of digits in the stream (the reasoning depth).
+        seed: Seed for the random digit stream.
+
+    Returns:
+        ``{"prompt", "answer"}`` where answer is the maximum digit.
+    """
+    rng = random.Random(seed)
+    nums = [rng.randint(1, 9) for _ in range(n_ops)]
+    return {
+        "prompt": "Numbers: " + " ".join(map(str, nums)) + ". Largest so far? A:",
+        "answer": max(nums),
+    }

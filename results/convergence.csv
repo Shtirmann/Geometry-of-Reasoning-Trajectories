@@ -1,0 +1,16 @@
+file,kind,n_ops,num_steps,init_seed,conv_rate,cos,dlr,shrink
+track_n48_ns64_init0.npy,track,48,64,0,-0.0698,-0.321,12.24,0.02
+track_n48_ns64_init1.npy,track,48,64,1,-0.0681,-0.314,11.94,0.0202
+track_n48_ns64_init2.npy,track,48,64,2,-0.0677,-0.316,12.07,0.0179
+local_n48_ns64_init0.npy,local,48,64,0,-0.0712,-0.222,11.47,0.0188
+local_n48_ns64_init1.npy,local,48,64,1,-0.0636,-0.176,11.68,0.0213
+local_n48_ns64_init2.npy,local,48,64,2,-0.0679,-0.089,11.11,0.0194
+track_n4_ns64_init0.npy,track,4,64,0,-0.0678,-0.338,12.93,0.0195
+track_n4_ns64_init1.npy,track,4,64,1,-0.0711,-0.342,12.82,0.0188
+track_n4_ns64_init2.npy,track,4,64,2,-0.0739,-0.366,11.82,0.0179
+track_n48_ns16_init0.npy,track,48,16,0,-0.1825,0.245,3.41,0.0976
+track_n48_ns16_init1.npy,track,48,16,1,-0.1764,0.185,3.28,0.0975
+track_n48_ns16_init2.npy,track,48,16,2,-0.171,0.352,3.33,0.0998
+track_n24_ns16_init0.npy,track,24,16,0,-0.1778,0.295,3.49,0.1003
+track_n24_ns16_init1.npy,track,24,16,1,-0.1816,0.214,3.46,0.0891
+track_n24_ns16_init2.npy,track,24,16,2,-0.1764,0.258,3.2,0.1

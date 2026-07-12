@@ -12,7 +12,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts._common import cached, load_model
-from traj_geom.analysis.correlate import partial_spearman, spearman
+from traj_geom.analysis.correlate import fmt_by_level, partial_spearman, spearman
 from traj_geom.metrics.dynamics import steps_to_settle
 from traj_geom.metrics.winding import winding_of
 from traj_geom.shapes.gate import classify_shape
@@ -48,10 +48,14 @@ def main() -> None:
     """Report |winding|/steps vs count length and the length-controlled partial."""
     cdf = cached("counting.csv", compute)
     print(cdf.groupby("n_ops")[["seq_len", "winding", "steps_settle"]].mean().round(2))
-    print("|winding|~n_ops:", spearman(cdf["n_ops"], cdf["winding"]))
-    print("steps~n_ops:", spearman(cdf["n_ops"], cdf["steps_settle"]))
+    # Canonical: per-level Spearman + N.
+    print("|winding|~n_ops [per-level]:", fmt_by_level(cdf, "n_ops", "winding"))
+    print("steps~n_ops    [per-level]:", fmt_by_level(cdf, "n_ops", "steps_settle"))
+    # Secondary (per-row):
+    print("|winding|~n_ops [per-row]:", spearman(cdf["n_ops"], cdf["winding"]))
+    print("steps~n_ops    [per-row]:", spearman(cdf["n_ops"], cdf["steps_settle"]))
     print(
-        "partial |winding|~n_ops | L:",
+        "|winding|~n_ops [per-row, partial|L]:",
         partial_spearman(cdf["winding"], cdf["n_ops"], cdf["seq_len"]),
     )
 

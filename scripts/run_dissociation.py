@@ -19,7 +19,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts._common import FIGURES_DIR, cached, load_model
-from traj_geom.analysis.correlate import spearman
+from traj_geom.analysis.correlate import fmt_by_level, spearman
 from traj_geom.metrics.dynamics import steps_to_settle
 from traj_geom.metrics.winding import winding_of
 from traj_geom.shapes.synthetic import make_variants
@@ -100,9 +100,12 @@ def main() -> None:
     ctrl = cached(name, _compute_fn(args.seeds))
     for kind in ("track", "local"):
         s = ctrl[ctrl.kind == kind]
+        # Canonical: per-level Spearman + N.
+        print(f"{kind} [per-level] | steps~n_ops:", fmt_by_level(s, "n_ops", "steps_settle"))
+        print(f"{kind} [per-level] | winding~n_ops:", fmt_by_level(s, "n_ops", "winding"))
+        # Secondary (per-row):
         print(
-            kind,
-            "| winding~n_ops:", spearman(s.n_ops, s.winding),
+            f"{kind} [per-row]   | winding~n_ops:", spearman(s.n_ops, s.winding),
             "| steps~n_ops:", spearman(s.n_ops, s.steps_settle),
         )
     plot(ctrl, FIGURES_DIR / "dissociation.png")
