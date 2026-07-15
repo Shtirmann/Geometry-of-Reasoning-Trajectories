@@ -1,11 +1,22 @@
-import sys
+"""SYNTHETIC METRIC CHECK ONLY — trajectories are np.random.randn with an injected
+5+2*depth decay; validates metric code, NOT a model result. Real-data result:
+scripts/run_two_scale_depth.py.
+
+Its output results/two_scale_analysis.csv MUST NOT be presented as a model finding
+(the earlier "accel rho=0.997 / orth=-0.5" deck numbers came from this random-noise
+generator). Kept on purpose so the diff shows the placeholder -> real-data correction.
+"""
+
 import os
+import sys
+
 # Добавляем корневую папку проекта в путь
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from src.traj_geom.metrics.two_scale import compute_two_scale_metrics
 
 print("=" * 60)
@@ -23,14 +34,14 @@ for i in range(n_trajs):
     depth = 2 + (i % 4)  # depths 2-5
     steps = 32
     dim = 5280
-    
+
     # Создаем синтетическую траекторию
     traj = np.random.randn(steps, dim) * 0.1
-    
+
     # Добавляем структуру: затухание
     decay = np.exp(-np.arange(steps) / (5 + depth * 2))
     traj = traj * decay[:, None]
-    
+
     # Вычисляем метрики
     metrics = compute_two_scale_metrics(traj)
     metrics['depth'] = depth
@@ -43,7 +54,7 @@ df = pd.DataFrame(results)
 output_dir = Path("results")
 output_dir.mkdir(exist_ok=True)
 df.to_csv(output_dir / "two_scale_analysis.csv", index=False)
-print(f"   ✅ Results saved to results/two_scale_analysis.csv")
+print("   ✅ Results saved to results/two_scale_analysis.csv")
 
 # Выводим статистику
 print("\n3. Summary statistics:")

@@ -63,3 +63,44 @@ def extract_trajectory(
         h.remove()  # removed even if the forward raised
 
     return torch.stack([latent[0, token_index, :] for latent in lat]).numpy()
+
+
+def extract_trajectory_allpos(
+    model: Any,
+    tok: Any,
+    prompt: str,
+    num_steps: int = 32,
+    seed: int = 0,
+    device: str = "cuda",
+) -> tuple[np.ndarray, int]:
+    """Capture the recurrent path of ALL token positions (single-GPU, sequential).
+
+    Same hook as :func:`extract_trajectory` but keeps every position instead of one,
+    for the two-scale (per-position) analysis. No threads — one forward pass.
+
+    Args:
+        model: A model handle from :func:`traj_geom.extraction.model.load_huginn`.
+        tok: The matching tokenizer.
+        prompt: Input prompt text.
+        num_steps: Number of recurrent unrolls r (plain int, not a tensor).
+        seed: Seed for the random recurrent initialisation h_0.
+        device: Torch device string.
+
+    Returns:
+        ``(states, seq_len)`` where states has shape [num_steps, seq_len, HIDDEN_DIM]
+        and seq_len is the prompt length in tokens.
+    """
+    mod = model.transformer.core_block[-1]
+    mod._forward_hooks.clear()  # drop hooks left by any crashed run (else doubled captures)
+
+    lat: list[torch.Tensor] = []
+    hk = mod.register_forward_hook(lambda m, i, o: lat.append(o.detach().float().cpu()))
+    try:
+        torch.manual_seed(int(seed))  # h_0 is random -> seed for reproducibility
+        ids = tok(prompt, return_tensors="pt").input_ids.to(device)
+        with torch.no_grad():
+            model(input_ids=ids, num_steps=int(num_steps))  # int; forward, NOT generate
+    finally:
+        hk.remove()  # removed even if the forward raised
+
+    return torch.stack([latent[0] for latent in lat]).numpy(), int(ids.shape[1])
