@@ -1,0 +1,19 @@
+TWO-SCALE ON REAL HUGINN (single-GPU) - honest summary
+====================================================
+
+1. David deck numbers (accel rho=0.997, orth=-0.5) = np.random.randn + hand-coded 5+2*depth. No model.
+
+2. PARARULE depth 2-5: accel nearly flat; seq_len rises with depth -> depth and length collinear,
+   cannot be separated on full range (partial unreliable).
+   accel_content by depth: 18.00, 18.42, 18.53, 18.89
+
+3. LENGTH-MATCHED (adjacent depths, length fixed): depth-coef|len per band:
+   2-3: accel_content depth-coef|len = +1.565 (n=120)
+   3-4: accel_content depth-coef|len = +1.266 (n=120)
+   4-5: accel_content depth-coef|len = +1.184 (n=120)
+
+VERDICT:
+ - David's evidence was a random-noise artifact (certain).
+ - Answer-token acceleration does not track depth.
+ - At matched length, +1 depth raises CONTENT acceleration on low-mid steps (real signal beyond length),
+   but 'depth' co-varies with logical rule-count; high depths under-sampled. Promising, not conclusive.

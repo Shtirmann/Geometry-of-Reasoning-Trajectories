@@ -1,11 +1,13 @@
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 # Загружаем результаты
 df = pd.read_csv('results/two_scale_analysis.csv')
@@ -39,7 +41,7 @@ ax3.set_ylabel('Count')
 
 # 4. Acceleration vs Orthogonality
 ax4 = axes[1, 1]
-scatter = ax4.scatter(df['mean_acceleration'], df['mean_orthogonality'], 
+scatter = ax4.scatter(df['mean_acceleration'], df['mean_orthogonality'],
                      c=df['depth'], cmap='viridis', alpha=0.7)
 ax4.set_xlabel('Mean Acceleration')
 ax4.set_ylabel('Mean Orthogonality')
