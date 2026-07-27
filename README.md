@@ -1,5 +1,3 @@
-# README
-
 # Reproduction of Orthogonality in Latent Spaces on Real Data
 
 ## About This Study
